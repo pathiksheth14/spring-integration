@@ -4,10 +4,12 @@
        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
 		http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration.xsd
 		http://www.springframework.org/schema/integration/file http://www.springframework.org/schema/integration/file/spring-integration-file.xsd
-		http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd"
+        http://www.springframework.org/schema/integration/ftp http://www.springframework.org/schema/integration/ftp/spring-integration-ftp.xsd
+        http://www.springframework.org/schema/util"
        xmlns:int="http://www.springframework.org/schema/integration"
        xmlns:int-file="http://www.springframework.org/schema/integration/file"
-       xmlns:task="http://www.springframework.org/schema/task">
+       xmlns:int-ftp="http://www.springframework.org/schema/integration/ftp"
+       xmlns:util="http://www.springframework.org/schema/util">
 
 
     <int:service-activator input-channel="filesInChannel" output-channel="filesOutChannel">
@@ -25,5 +27,28 @@
     <int:channel id="filesOutChannel">
         <int:queue/>
     </int:channel>
+
+
+    <int:channel id="ftp-copied-files"/>
+
+    <int:logging-channel-adapter channel="ftp-copied-files"/>
+
+    <int-ftp:inbound-channel-adapter channel="ftp-copied-files"
+                                     local-directory="file://#{systemProperties['user.home']}/received_ftp_files"
+                                     session-factory="ftp-session-factory" remote-directory="stock" delete-remote-files="false"
+                                     filter="file-filter">
+        <int:poller task-executor="ftp-executor" fixed-delay="25000"/>
+    </int-ftp:inbound-channel-adapter>
+
+    <bean id="file-filter" class="org.springframework.integration.file.filters.CompositeFileListFilter">
+        <constructor-arg ref="file-list-filters"/>
+    </bean>
+
+    <util:list id="file-list-filters">
+        <bean class="com.pathik.springintegration.filters.custom.FtpModifiedFileListFilter"/>
+        <bean class="org.springframework.integration.ftp.filters.FtpSimplePatternFileListFilter">
+            <constructor-arg value="test-ext.csv"/>
+        </bean>
+    </util:list>
 
 </beans>
